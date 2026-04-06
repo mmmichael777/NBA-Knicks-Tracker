@@ -1,0 +1,204 @@
+```python
+import tkinter as tk
+from tkinter import font
+import requests
+import feedparser
+import threading
+import time
+
+# Constants for API and RSS feeds
+NBA_SCORE_API = "https://data.nba.net/prod/v1/today.json"
+NBA_SCOREBOARD_API = "https://data.nba.net/prod/v1/{date}/scoreboard.json"
+RSS_FEED_URL = "https://www.espn.com/espn/rss/nba/news"  # ESPN NBA news feed
+
+# Team info
+TEAM_NAME = "New York Knicks"
+TEAM_ID = 1610612752  # Knicks team ID in NBA API
+
+def get_today_date():
+    from datetime import datetime
+    return datetime.now().strftime("%Y%m%d")
+
+def fetch_scores():
+    date = get_today_date()
+    url = NBA_SCOREBOARD_API.format(date=date)
+    try:
+        res = requests.get(url)
+        res.raise_for_status()
+        data = res.json()
+        games = data.get("games", [])
+        for game in games:
+            home_team = game["hTeam"]
+            away_team = game["vTeam"]
+            if home_team["teamId"] == str(TEAM_ID) or away_team["teamId"] == str(TEAM_ID):
+                # Determine if Knicks are home or away
+                if home_team["teamId"] == str(TEAM_ID):
+                    knicks_score = home_team["score"]
+                    opp_score = away_team["score"]
+                    opp_name = away_team["triCode"]
+                    knicks_side = "HOME"
+                else:
+                    knicks_score = away_team["score"]
+                    opp_score = home_team["score"]
+                    opp_name = home_team["triCode"]
+                    knicks_side = "AWAY"
+                status = game["statusNum"]
+                period = game.get("period", {}).get("current", 0)
+                clock = game.get("clock", "")
+                return {
+                    "knicks_score": knicks_score,
+                    "opp_score": opp_score,
+                    "opp_name": opp_name,
+                    "status": status,
+                    "period": period,
+                    "clock": clock,
+                    "knicks_side": knicks_side
+                }
+        return None
+    except Exception:
+        return None
+
+def fetch_standings():
+    # Fetch standings from NBA API
+    try:
+        res = requests.get(NBA_SCORE_API)
+        res.raise_for_status()
+        data = res.json()
+        season_year = data["seasonScheduleYear"]
+        standings_url = f"https://data.nba.net/prod/v1/{season_year}/standings_conference.json"
+        res2 = requests.get(standings_url)
+        res2.raise_for_status()
+        standings_data = res2.json()
+        teams = standings_data["league"]["standard"]["teams"]
+        knicks_standings = None
+        for team in teams:
+            if team["teamId"] == str(TEAM_ID):
+                knicks_standings = team
+                break
+        if not knicks_standings:
+            return None
+        # Extract division, conference, league rank and records
+        division_rank = knicks_standings.get("divisionRank", "N/A")
+        conference_rank = knicks_standings.get("confRank", "N/A")
+        league_rank = knicks_standings.get("leagueRank", "N/A")
+        win = knicks_standings.get("win", "0")
+        loss = knicks_standings.get("loss", "0")
+        pct = knicks_standings.get("winPct", "0")
+        return {
+            "division_rank": division_rank,
+            "conference_rank": conference_rank,
+            "league_rank": league_rank,
+            "win": win,
+            "loss": loss,
+            "pct": pct
+        }
+    except Exception:
+        return None
+
+def fetch_news():
+    try:
+        feed = feedparser.parse(RSS_FEED_URL)
+        entries = feed.entries[:5]
+        news_items = []
+        for entry in entries:
+            title = entry.title
+            summary = entry.summary if hasattr(entry, 'summary') else ""
+            news_items.append(f"- {title}")
+        return news_items
+    except Exception:
+        return ["Failed to load news."]
+
+class RetroScoreboardApp(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("New York Knicks Retro Scoreboard")
+        self.configure(bg="black")
+        self.geometry("600x400")
+        self.resizable(False, False)
+
+        # Retro font setup
+        self.retro_font_big = font.Font(family="Courier", size=48, weight="bold")
+        self.retro_font_medium = font.Font(family="Courier", size=20, weight="bold")
+        self.retro_font_small = font.Font(family="Courier", size=12)
+
+        # Scoreboard frame
+        self.score_frame = tk.Frame(self, bg="black", bd=5, relief="ridge")
+        self.score_frame.pack(pady=10, fill="x", padx=20)
+
+        self.knicks_label = tk.Label(self.score_frame, text="KNICKS", fg="orange", bg="black", font=self.retro_font_medium)
+        self.knicks_label.grid(row=0, column=0, padx=10)
+
+        self.knicks_score_label = tk.Label(self.score_frame, text="0", fg="orange", bg="black", font=self.retro_font_big)
+        self.knicks_score_label.grid(row=1, column=0, padx=10)
+
+        self.vs_label = tk.Label(self.score_frame, text="VS", fg="white", bg="black", font=self.retro_font_medium)
+        self.vs_label.grid(row=1, column=1, padx=20)
+
+        self.opp_score_label = tk.Label(self.score_frame, text="0", fg="white", bg="black", font=self.retro_font_big)
+        self.opp_score_label.grid(row=1, column=2, padx=10)
+
+        self.opp_label = tk.Label(self.score_frame, text="OPP", fg="white", bg="black", font=self.retro_font_medium)
+        self.opp_label.grid(row=0, column=2, padx=10)
+
+        self.status_label = tk.Label(self.score_frame, text="", fg="lime", bg="black", font=self.retro_font_small)
+        self.status_label.grid(row=2, column=0, columnspan=3, pady=5)
+
+        # Standings frame
+        self.standings_frame = tk.Frame(self, bg="black", bd=5, relief="ridge")
+        self.standings_frame.pack(pady=10, fill="x", padx=20)
+
+        self.standings_title = tk.Label(self.standings_frame, text="Standings", fg="cyan", bg="black", font=self.retro_font_medium)
+        self.standings_title.pack()
+
+        self.standings_text = tk.Label(self.standings_frame, text="", fg="cyan", bg="black", font=self.retro_font_small, justify="left")
+        self.standings_text.pack()
+
+        # News frame
+        self.news_frame = tk.Frame(self, bg="black", bd=5, relief="ridge")
+        self.news_frame.pack(pady=10, fill="both", expand=True, padx=20)
+
+        self.news_title = tk.Label(self.news_frame, text="Latest News", fg="yellow", bg="black", font=self.retro_font_medium)
+        self.news_title.pack()
+
+        self.news_text = tk.Text(self.news_frame, bg="black", fg="yellow", font=self.retro_font_small, height=8, bd=0, highlightthickness=0)
+        self.news_text.pack(fill="both", expand=True)
+        self.news_text.configure(state="disabled")
+
+        self.update_data()
+        self.after(60000, self.periodic_update)  # update every 60 seconds
+
+    def update_data(self):
+        score_data = fetch_scores()
+        if score_data:
+            self.knicks_score_label.config(text=score_data["knicks_score"])
+            self.opp_score_label.config(text=score_data["opp_score"])
+            self.opp_label.config(text=score_data["opp_name"])
+            status_text = ""
+            if score_data["status"] == 1:
+                status_text = "Scheduled"
+            elif score_data["status"] == 2:
+                status_text = f"Q{score_data['period']} - {score_data['clock']}"
+            elif score_data["status"] == 3:
+                status_text = "Final"
+            self.status_label.config(text=status_text)
+        else:
+            self.knicks_score_label.config(text="-")
+            self.opp_score_label.config(text="-")
+            self.opp_label.config(text="N/A")
+            self.status_label.config(text="No game today")
+
+        standings = fetch_standings()
+        if standings:
+            standings_str = (
+                f"Division Rank: {standings['division_rank']}\n"
+                f"Conference Rank: {standings['conference_rank']}\n"
+                f"League Rank: {standings['league_rank']}\n"
+                f"Record: {standings['win']}-{standings['loss']} (Pct: {standings['pct']})"
+            )
+            self.standings_text.config(text=standings_str)
+        else:
+            self.standings_text.config(text="Standings data unavailable")
+
+        news_items = fetch_news()
+        self.news_text.configure(state="normal")
+        self.news_text.delete(1.0, tk
