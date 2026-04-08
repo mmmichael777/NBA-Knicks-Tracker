@@ -202,3 +202,14 @@ class RetroScoreboardApp(tk.Tk):
         news_items = fetch_news()
         self.news_text.configure(state="normal")
         self.news_text.delete(1.0, tk.End)
+        for item in news_items:
+            self.news_text.insert(tk.End, item + "\n")
+        self.news_text.configure(state="disabled")
+
+    def periodic_update(self):
+        self.update_data()
+        self.after(60000, self.periodic_update)
+
+if __name__ == "__main__":
+    app = RetroScoreboardApp()
+    app.mainloop()
