@@ -201,4 +201,5 @@ class RetroScoreboardApp(tk.Tk):
 
         news_items = fetch_news()
         self.news_text.configure(state="normal")
-        self.news_text.delete(1.0, tk
+        self.news_text.delete(1.0, tk.END)
+
