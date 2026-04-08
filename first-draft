@@ -1,4 +1,3 @@
-```python
 import tkinter as tk
 from tkinter import font
 import requests
@@ -14,7 +13,6 @@ RSS_FEED_URL = "https://www.espn.com/espn/rss/nba/news"  # ESPN NBA news feed
 # Team info
 TEAM_NAME = "New York Knicks"
 TEAM_ID = 1610612752  # Knicks team ID in NBA API
-
 def get_today_date():
     from datetime import datetime
     return datetime.now().strftime("%Y%m%d")
@@ -30,9 +28,9 @@ def fetch_scores():
         for game in games:
             home_team = game["hTeam"]
             away_team = game["vTeam"]
-            if home_team["teamId"] == str(TEAM_ID) or away_team["teamId"] == str(TEAM_ID):
+            if home_team["teamId"] == TEAM_ID or away_team["teamId"] == TEAM_ID:
                 # Determine if Knicks are home or away
-                if home_team["teamId"] == str(TEAM_ID):
+                if home_team["teamId"] == TEAM_ID:
                     knicks_score = home_team["score"]
                     opp_score = away_team["score"]
                     opp_name = away_team["triCode"]
@@ -72,7 +70,7 @@ def fetch_standings():
         teams = standings_data["league"]["standard"]["teams"]
         knicks_standings = None
         for team in teams:
-            if team["teamId"] == str(TEAM_ID):
+            if team["teamId"] == TEAM_ID:
                 knicks_standings = team
                 break
         if not knicks_standings:
@@ -106,7 +104,7 @@ def fetch_news():
             news_items.append(f"- {title}")
         return news_items
     except Exception:
-        return ["Failed to load news."]
+        return ["Failed to load news."].
 
 class RetroScoreboardApp(tk.Tk):
     def __init__(self):
@@ -164,7 +162,9 @@ class RetroScoreboardApp(tk.Tk):
         self.news_text.pack(fill="both", expand=True)
         self.news_text.configure(state="disabled")
 
-        self.update_data()
+        # Run initial update in background thread to prevent UI freeze
+        thread = threading.Thread(target=self.update_data, daemon=True)
+        thread.start()
         self.after(60000, self.periodic_update)  # update every 60 seconds
 
     def update_data(self):
