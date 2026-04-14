@@ -104,7 +104,7 @@ def fetch_news():
             news_items.append(f"- {title}")
         return news_items
     except Exception:
-        return ["Failed to load news."].
+        return ["Failed to load news."]
 
 class RetroScoreboardApp(tk.Tk):
     def __init__(self):
@@ -123,7 +123,7 @@ class RetroScoreboardApp(tk.Tk):
         self.score_frame = tk.Frame(self, bg="black", bd=5, relief="ridge")
         self.score_frame.pack(pady=10, fill="x", padx=20)
 
-        self.knicks_label = tk.Label(self.score_frame, text="KNICKS", fg="orange", bg="black", font=self.retro_font_medium)
+        self.knicks_label = tk.Label(self.score_frame, text=TEAM_NAME, fg="orange", bg="black", font=self.retro_font_medium)
         self.knicks_label.grid(row=0, column=0, padx=10)
 
         self.knicks_score_label = tk.Label(self.score_frame, text="0", fg="orange", bg="black", font=self.retro_font_big)
